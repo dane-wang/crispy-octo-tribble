@@ -1,0 +1,4 @@
+map_size: [50, 50] #[width, height] size of the map
+start_position: [0, 5] # The x and y location of the start point
+goal_position: [38, 25] #The x and y location of the goal point
+max_thread: 20 #The maximum thread of GPU can be used for the planning. AKA the maximum number of nodes can be explored each time
