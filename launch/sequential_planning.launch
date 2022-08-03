@@ -1,7 +1,8 @@
 <launch>
+ <!-- Load parameters from yaml file -->
+ <rosparam file="$(find graph_search)/configs/map.yaml" command="load"/>
  <!-- Start the planning node -->
  <node name="sequential_planning" pkg="graph_search" type="start_and_goal" output="screen" required="true">
-    <rosparam command="load" file="$(find graph_search)/configs/map.yaml"/>
  </node>
 
 <!-- Start the map publishing node -->
