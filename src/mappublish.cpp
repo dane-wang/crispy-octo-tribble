@@ -5,16 +5,15 @@
 #include "graph_search/my_msg.h"
 
 
-ros::Publisher pub;
+// ros::Publisher pub;
+nav_msgs::OccupancyGrid myMap;
 
 void mapCallback (const graph_search::my_msg::ConstPtr& msg ){
-
-    // 定义地图对象
-    nav_msgs::OccupancyGrid myMap;
-    
+   
 
     // 地图数据 
-    int n =100;
+    int n;
+    ros::param::get("map_size", n);
     //myMap.info.map_load_time = ros::Time(0);
     myMap.info.resolution = 0.5;
     myMap.info.width = n;
@@ -33,29 +32,12 @@ void mapCallback (const graph_search::my_msg::ConstPtr& msg ){
     
     myMap.data = msg->points;
 
-    // myMap.data[msg.x] = 120;
-    // myMap.data[msg.y] = 140;
- 
-    
+
 
     // frame id
     myMap.header.frame_id = "map";
 
-    // 消息发布频率
     
-
-    
-
-
-    ros::Rate loop_rate(5);
-
-	while (ros::ok()) 
-	{ 
-        // 广播
-		pub.publish(myMap);
-	    ros::spinOnce(); 
-		loop_rate.sleep(); 
-	 } 
 	
 }
 
@@ -69,9 +51,21 @@ int main (int argc, char **argv)
 	ros::NodeHandle nh; 
 
     // 发布消息 话题名字 队列大小
-	pub = nh.advertise<nav_msgs::OccupancyGrid> ("mappublish", 100);
-    ros::Subscriber sub = nh.subscribe("start_and_goal",100,mapCallback);
-    ros::spin();
+    ros::Subscriber sub = nh.subscribe("planning_info",100, mapCallback);
+    ros::Publisher pub = nh.advertise<nav_msgs::OccupancyGrid> ("mappublish", 100);
+
+    // 消息发布频率
+
+    ros::Rate loop_rate(10);
+
+	while (ros::ok()) 
+	{ 
+        // 广播
+        ros::spinOnce(); 
+		pub.publish(myMap);
+	    
+		loop_rate.sleep(); 
+	} 
     return 0; 
 
 }

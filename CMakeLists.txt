@@ -149,8 +149,8 @@ add_executable(mappublish src/mappublish.cpp)
 target_link_libraries(mappublish ${catkin_LIBRARIES})
 
 
-add_executable(start_and_goal src/start_and_goal.cpp)
-target_link_libraries(start_and_goal ${catkin_LIBRARIES})
+add_executable(a_star src/a_star.cpp)
+target_link_libraries(a_star ${catkin_LIBRARIES})
 
 
 ## Declare a C++ library

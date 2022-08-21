@@ -127,12 +127,25 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "parallel_planning");
+  ros::NodeHandle nh; 
 
-  int n = 100;
+  // 发布消息 话题名字 队列大小
+	ros::Publisher pub = nh.advertise<graph_search::my_msg> ("planning_info", 100);
+    
+  //geometry_msgs::Point start_goal;
+  graph_search::my_msg map;
+
+  int n;
+  std::vector<int> start_coord, goal_coord;
+  ros::param::get("map_size", n);
+  ros::param::get("start_position", start_coord);
+  ros::param::get("goal_position", goal_coord);
+  
+  planner::Node graph[n*n];
 
   // planner::Node* graph1;
   // graph1 = (planner::Node*)malloc(sizeof(planner::Node)*2000*2000);
-  planner::Node graph[n*n];
+  
 
   
 
@@ -152,8 +165,8 @@ int main(int argc, char** argv)
 
   // Initialize the start and goal node
   
-  int start = 10;
-  int goal = 7000;
+  int start = start_coord[0]*n+start_coord[1];
+  int goal = goal_coord[0]*n+goal_coord[1];
 
   int path1 = goal;
   bool path_found = false;
@@ -202,13 +215,7 @@ int main(int argc, char** argv)
 
   thrust::device_vector<int> q_lists_gpu = q_lists;
 
-  ros::NodeHandle nh; 
-
-    // 发布消息 话题名字 队列大小
-	ros::Publisher pub = nh.advertise<graph_search::my_msg> ("start_and_goal", 100);
-    
-    //geometry_msgs::Point start_goal;
-  graph_search::my_msg map;
+  
 
 
   while (ros::ok()) {

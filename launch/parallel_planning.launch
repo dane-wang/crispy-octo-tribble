@@ -2,7 +2,7 @@
  <!-- Load parameters from yaml file -->
  <rosparam file="$(find graph_search)/configs/map.yaml" command="load"/>
  <!-- Start the planning node -->
- <node name="sequential_planning" pkg="graph_search" type="a_star" output="screen" required="true">
+ <node name="sequential_planning" pkg="graph_search" type="a_star_parallel" output="screen" required="true">
  </node>
 
 <!-- Start the map publishing node -->

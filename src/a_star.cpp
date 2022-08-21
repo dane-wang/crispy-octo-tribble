@@ -12,8 +12,12 @@ int main (int argc, char **argv)
     // 初始化ROS节点 节点名字
 	ros::init (argc, argv, "start_and_goal"); 
 	
-    //map size
-    int n = 100;
+    //generate map info from the config file
+    int n;
+    std::vector<int> start_coord, goal_coord;
+    ros::param::get("map_size", n);
+    ros::param::get("start_position", start_coord);
+    ros::param::get("goal_position", goal_coord);
     
     planner::Node graph[n*n];
 
@@ -27,8 +31,8 @@ int main (int argc, char **argv)
     }
 
     // Initialize the start and goal node
-    int start = 10;
-    int goal = 7000;
+    int start = start_coord[0]*n+start_coord[1];
+    int goal = goal_coord[0]*n+goal_coord[1];
     bool path_found = false;
 
     int path1 = goal;
@@ -59,7 +63,7 @@ int main (int argc, char **argv)
 	ros::NodeHandle nh; 
 
     // 发布消息 话题名字 队列大小
-	ros::Publisher pub = nh.advertise<graph_search::my_msg> ("start_and_goal", 100);
+	ros::Publisher pub = nh.advertise<graph_search::my_msg> ("planning_info", 100);
     
     //geometry_msgs::Point start_goal;
     graph_search::my_msg map;
@@ -75,7 +79,7 @@ int main (int argc, char **argv)
             q_list.pop_back();
             int explored_index = smallest_node[0];
 
-             std::cout << explored_index << std::endl;
+            //std::cout << explored_index << std::endl;
 
             graph[explored_index].explored = true;
             graph[explored_index].frontier = false;
@@ -97,6 +101,8 @@ int main (int argc, char **argv)
                 for (int i=0; i<4; i++)
                 {
                     int new_index = explored_index + neighbor[i];
+
+                    //Check if the new index possible (like if it will go out of the map)
                     bool edge_detect = true;
 
                     if ((explored_index%n ==0 && neighbor[i] == -1) || (explored_index%(n-1) ==0 && neighbor[i] == 1) || new_index<0 || new_index >= n*n){
@@ -145,7 +151,8 @@ int main (int argc, char **argv)
             
 
 
-              
+            //Create the message to publish
+            //Assign values based on grip status. Help visualization
             std::vector<int8_t> v(n*n, 0);
             for (int y =0; y<n; y++){
 
