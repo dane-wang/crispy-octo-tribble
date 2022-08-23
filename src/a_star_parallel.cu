@@ -34,15 +34,15 @@ struct is_negative
 
 
 
-template <typename T> 
-__global__ void get_h(T* q,  planner::Node* graph, float* h, int q_size )
+template <typename T, typename T1> 
+__global__ void get_f(T* q,  planner::Node* graph, T1* h, int q_size )
 {
 
   int tid = blockIdx.x *blockDim.x + threadIdx.x;
   if (tid < q_size){
     int node = q[tid];
 
-    h[tid] = graph[node].h;
+    h[tid] = graph[node].f;
 
     // printf("%d", q[tid]);
   }
@@ -61,7 +61,7 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 
   if (graph[explored_index].goal){
     printf("FOUND");
-    printf("Hello from thread %d, I am explored %d\n", tid, explored_index);
+    printf("Hello from thread %d, I am exploring %d\n", tid, explored_index);
     // planner::Node* temp_node = graph[explored_index].parent;
     // while (!temp_node->start){
        
@@ -135,11 +135,12 @@ int main(int argc, char** argv)
   //geometry_msgs::Point start_goal;
   graph_search::my_msg map;
 
-  int n;
+  int n, max_thread_size;
   std::vector<int> start_coord, goal_coord;
   ros::param::get("map_size", n);
   ros::param::get("start_position", start_coord);
   ros::param::get("goal_position", goal_coord);
+  ros::param::get("max_thread", max_thread_size);
   
   planner::Node graph[n*n];
 
@@ -222,49 +223,46 @@ int main(int argc, char** argv)
     while(ros::ok() && q_lists_gpu.size()!=0 && !path_found){
 
       int q_size = q_lists_gpu.size();
+
+      //new_q is the list store the frontier generated from this step of exploration
       thrust::device_vector<int> new_q_lists_gpu(4*q_size);
       thrust::fill(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), -1);
 
-      int thread_size = min(1024, q_size);
+
+      //Determine how many thread should be launched
+      int thread_size = min(max_thread_size, q_size);
 
  
-      
+      //Launch the kernel to explore the map
       explore<<<1,thread_size>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(new_q_lists_gpu.data()));
       cudaDeviceSynchronize();
       cudaMemcpyFromSymbol(&path_found, path_found_gpu,  sizeof(bool), 0, cudaMemcpyDeviceToHost );
-
       cudaMemcpy(&graph, map_gpu,  map_size, cudaMemcpyDeviceToHost );
 
+
       // Remove all element that is not used during the exploration and repeated value
-      
       new_q_lists_gpu.erase(thrust::remove_if(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), is_negative()),  new_q_lists_gpu.end() );
       new_q_lists_gpu.erase(thrust::unique(new_q_lists_gpu.begin(), new_q_lists_gpu.end()), new_q_lists_gpu.end() );
 
-      std::cout << new_q_lists_gpu.size() << std::endl;
+      //std::cout << new_q_lists_gpu.size() << std::endl;
 
-      // for (int o =0; o< new_q_lists_gpu.size(); o++){
-      //   int as = new_q_lists_gpu[o];
-
-        
-      //   // printf("%d\n", as);
-        
-      // }
-
-      // for (int o =0; o< new_q_lists_gpu.size(); o++){
-      //   int ss = new_q_lists_gpu[0];
-      //   printf("%d\n", ss);
-      // }
       
       // Create new q list based on origional and updated q
-      if (q_size <= 1024) {
+      if (q_size <= max_thread_size) {
         q_lists_gpu.clear();
         q_lists_gpu = new_q_lists_gpu;
         new_q_lists_gpu.clear();
       }
       else {
         
-        q_lists_gpu.erase(q_lists_gpu.begin(), q_lists_gpu.begin()+1024 );
+        q_lists_gpu.erase(q_lists_gpu.begin(), q_lists_gpu.begin()+max_thread_size );
         q_lists_gpu.insert(q_lists_gpu.end(), new_q_lists_gpu.begin(), new_q_lists_gpu.end() );
+        new_q_lists_gpu.clear();
+
+        // //sort the q_list based on the f value
+        thrust::device_vector<float> f_value(q_lists_gpu.size());
+        get_f<<<1, q_lists_gpu.size()>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
+        thrust::sort_by_key(f_value.begin(), f_value.end(), q_lists_gpu.begin() );
       }
 
       
@@ -326,10 +324,6 @@ int main(int argc, char** argv)
       //   std::cout<< static_cast<int16_t>(v[k]) << std::endl;
 
       // }
-     
-
-      
-
       ros::Rate loop_rate(5);
             
       map.points = v;
