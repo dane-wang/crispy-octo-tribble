@@ -6,6 +6,7 @@
 #include "graph_search/my_msg.h"
 #include "graph_search/planner1.h"
 #include <algorithm>
+#include <xmlrpcpp/XmlRpcValue.h>
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
@@ -74,45 +75,41 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
   if (!path_found_gpu){
     for (int i=0; i<4; i++)
     {   
-
+      
       int new_index = explored_index + neighbor_gpu[i];
       bool edge_detect = true;
 
-      if (new_index >=0) {
+      
                 
-        if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || (explored_index%(n-1) ==0 && neighbor_gpu[i] == 1) || new_index<0 || new_index >= n*n){
-          edge_detect = false;
-        }
+      if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || (explored_index%(n-1) ==0 && neighbor_gpu[i] == 1 &&explored_index!=0) || new_index<0 || new_index >= n*n){
+        edge_detect = false;
+      }
 
 
-        if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
+      if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
+      {
+        graph[new_index].g = graph[explored_index].g + 1;
+          
+        float h_1 = sqrt(pow((graph[new_index].x-graph[goal_gpu].x),2) + pow((graph[new_index].y-graph[goal_gpu].y),2));
+          // printf("%f", h_1);
+        graph[new_index].h = h_1;
+
+          
+        graph[new_index].f = graph[new_index].h + graph[new_index].g;
+        graph[new_index].parent = explored_index;
+        graph[new_index].frontier = true;
+        
+        new_q[4*tid+i] = new_index;
+      }
+      else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
+      {
+        if (graph[new_index].g > graph[explored_index].g + 1)
         {
           graph[new_index].g = graph[explored_index].g + 1;
-            
-          float h_1 = sqrt(pow((graph[new_index].x-graph[goal_gpu].x),2) + pow((graph[new_index].y-graph[goal_gpu].y),2));
-            // printf("%f", h_1);
-          graph[new_index].h = h_1;
-
-            
           graph[new_index].f = graph[new_index].h + graph[new_index].g;
           graph[new_index].parent = explored_index;
-          graph[new_index].frontier = true;
-          
-          new_q[4*tid+i] = new_index;
         }
-        else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
-        {
-          if (graph[new_index].g > graph[explored_index].g + 1)
-          {
-            graph[new_index].g = graph[explored_index].g + 1;
-            graph[new_index].f = graph[new_index].h + graph[new_index].g;
-            graph[new_index].parent = explored_index;
-          }
-        }
-
       }
-        
-
     }
 
   }
@@ -127,6 +124,36 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "parallel_planning");
+  
+
+  //generate map info from the config file
+  int n, max_thread_size;
+  std::vector<int> start_coord, goal_coord;
+  std::vector<int> obstacles;
+  XmlRpc::XmlRpcValue xml_obstacles;
+
+  ros::param::get("map_size", n);
+  ros::param::get("start_position", start_coord);
+  ros::param::get("goal_position", goal_coord);
+  ros::param::get("obstacles", xml_obstacles);
+  ros::param::get("max_thread", max_thread_size);
+
+  // Initialize the start and goal node
+  int start = start_coord[0]+start_coord[1] * n;
+  int goal = goal_coord[0]+goal_coord[1] * n;
+
+  // Initialize the obstacles list
+  for(int i=0; i< xml_obstacles.size(); i++){
+      int obstacles_index =  (int)xml_obstacles[i][0] +  (int)xml_obstacles[i][1] * n;
+      obstacles.push_back( obstacles_index);
+  }
+  planner::Node graph[n*n];
+  planner::map_generation(&graph[0], n, start, goal, obstacles);
+
+  int path1 = goal;
+  bool path_found = false;
+
+
   ros::NodeHandle nh; 
 
   // 发布消息 话题名字 队列大小
@@ -135,64 +162,7 @@ int main(int argc, char** argv)
   //geometry_msgs::Point start_goal;
   graph_search::my_msg map;
 
-  int n, max_thread_size;
-  std::vector<int> start_coord, goal_coord;
-  ros::param::get("map_size", n);
-  ros::param::get("start_position", start_coord);
-  ros::param::get("goal_position", goal_coord);
-  ros::param::get("max_thread", max_thread_size);
-  
-  planner::Node graph[n*n];
-
-  // planner::Node* graph1;
-  // graph1 = (planner::Node*)malloc(sizeof(planner::Node)*2000*2000);
-  
-
-  
-
-  // map initialization
-  for (int y =0; y<n; y++){
-
-    for (int x=0; x<n; x++){
-
-      graph[y*n+x].x = x;
-      graph[y*n+x].y = y;
-    }
-  }
-
-  // thrust::host_vector<int> H(4);
-
-  // std::cout << "a " << H.size() << std::endl;
-
-  // Initialize the start and goal node
-  
-  int start = start_coord[0]*n+start_coord[1];
-  int goal = goal_coord[0]*n+goal_coord[1];
-
-  int path1 = goal;
-  bool path_found = false;
-
-  graph[start].start = true;
-  graph[start].g = 0;
-  graph[start].h = planner::h_calculation(&graph[start], &graph[goal]);
-  graph[start].f = graph[start].h + graph[start].g;
-  graph[start].explored = true;
-
-  graph[goal].goal = true;
-  graph[goal].h = 0;
-
-
-  graph[350].obstacle = true;
-  graph[341].obstacle = true;
-  graph[320].obstacle = true;
-  graph[71].obstacle = true;
-  int neighbor[4] = {1, -1, n, -n};
-
-  // Create the priority queue for frontier
-  
-
   // Start to work with CUDA
-
   thrust::host_vector<int> q_lists;
 
   q_lists.push_back(start);
@@ -203,8 +173,7 @@ int main(int argc, char** argv)
 
   planner::Node *map_gpu;
 
-  
-
+  int neighbor[4] = {1, -1, n, -n};
 
   cudaMalloc( (void**)&map_gpu, map_size );
   cudaMemcpy(map_gpu, &graph, map_size, cudaMemcpyHostToDevice);
@@ -241,11 +210,10 @@ int main(int argc, char** argv)
 
 
       // Remove all element that is not used during the exploration and repeated value
+      
       new_q_lists_gpu.erase(thrust::remove_if(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), is_negative()),  new_q_lists_gpu.end() );
+      
       new_q_lists_gpu.erase(thrust::unique(new_q_lists_gpu.begin(), new_q_lists_gpu.end()), new_q_lists_gpu.end() );
-
-      //std::cout << new_q_lists_gpu.size() << std::endl;
-
       
       // Create new q list based on origional and updated q
       if (q_size <= max_thread_size) {

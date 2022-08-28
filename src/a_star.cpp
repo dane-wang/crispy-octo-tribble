@@ -6,6 +6,7 @@
 #include "graph_search/my_msg.h"
 #include "graph_search/planner1.h"
 #include <algorithm>
+#include <xmlrpcpp/XmlRpcValue.h>
 
 int main (int argc, char **argv) 
 { 
@@ -15,43 +16,33 @@ int main (int argc, char **argv)
     //generate map info from the config file
     int n;
     std::vector<int> start_coord, goal_coord;
+    std::vector<int> obstacles;
+    XmlRpc::XmlRpcValue xml_obstacles;
+
     ros::param::get("map_size", n);
     ros::param::get("start_position", start_coord);
     ros::param::get("goal_position", goal_coord);
-    
-    planner::Node graph[n*n];
-
-    for (int y =0; y<n; y++){
-
-        for (int x=0; x<n; x++){
-
-            graph[y*n+x].x = x;
-            graph[y*n+x].y = y;
-        }
-    }
+    ros::param::get("obstacles", xml_obstacles);
 
     // Initialize the start and goal node
-    int start = start_coord[0]*n+start_coord[1];
-    int goal = goal_coord[0]*n+goal_coord[1];
+    int start = start_coord[0]+start_coord[1] * n;
+    int goal = goal_coord[0]+goal_coord[1] * n;
+
+    // Initialize the obstacles list
+    for(int i=0; i< xml_obstacles.size(); i++){
+        int obstacles_index =  (int)xml_obstacles[i][0] +  (int)xml_obstacles[i][1] * n;
+        obstacles.push_back( obstacles_index);
+    }
+
+    //Generate the map
+    planner::Node graph[n*n];
+
+    planner::map_generation(&graph[0], n, start, goal, obstacles);
+    
     bool path_found = false;
 
-    int path1 = goal;
+    
 
-    graph[start].start = true;
-    graph[start].g = 0;
-    graph[start].h = planner::h_calculation(&graph[start], &graph[goal]);
-    graph[start].f = graph[start].h + graph[start].g;
-    graph[start].explored = true;
-
-    graph[goal].goal = true;
-    graph[goal].h = 0;
-
-
-    graph[350].obstacle = true;
-    graph[341].obstacle = true;
-    graph[320].obstacle = true;
-    graph[71].obstacle = true;
-    // Create the priority queue for frontier
     std::vector<std::vector<float> > q_list;
     q_list.push_back({(float) start, graph[start].f});
     //std::cout << q_list.size() << std::endl;
@@ -105,7 +96,7 @@ int main (int argc, char **argv)
                     //Check if the new index possible (like if it will go out of the map)
                     bool edge_detect = true;
 
-                    if ((explored_index%n ==0 && neighbor[i] == -1) || (explored_index%(n-1) ==0 && neighbor[i] == 1) || new_index<0 || new_index >= n*n){
+                    if ((explored_index%n ==0 && neighbor[i] == -1) || (explored_index%(n-1) ==0 && neighbor[i] == 1 && explored_index!=0) || new_index<0 || new_index >= n*n){
                         edge_detect = false;
                     }
 
@@ -138,6 +129,7 @@ int main (int argc, char **argv)
                 std::sort(q_list.begin(), q_list.end(), planner::sortcol);
             }
             else{
+                int path1 = goal;
                 while (path1 != start)
                 {
                     graph[path1].path = true;
