@@ -119,7 +119,7 @@ generate_messages(
 catkin_package(
   #INCLUDE_DIRS include
 #  LIBRARIES graph_search
-  CATKIN_DEPENDS geometry_msgs roscpp std_msgs nav_msgs message_runtime
+  CATKIN_DEPENDS geometry_msgs roscpp std_msgs nav_msgs message_runtime 
 #  DEPENDS system_lib
 )
 
@@ -138,19 +138,27 @@ include_directories(
   ${CUDA_LIBRARIES}
 )
 
-#SET(CUDA_NVCC_FLAGS "" CACHE STRING "nvcc flags" FORCE)
-#SET(CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
+ADD_LIBRARY(MyLibrary1 STATIC include/graph_search/planner1.h src/planner1.cpp )
+
+CUDA_ADD_LIBRARY(MyLibrary STATIC include/graph_search/parallel_explore.cuh src/parallel_explore.cu )
+set_target_properties( MyLibrary PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties( MyLibrary PROPERTIES LINKER_LANGUAGE CXX)
+
 
 cuda_add_executable(a_star_parallel  src/a_star_parallel.cu)
-target_link_libraries(a_star_parallel ${catkin_LIBRARIES} ${CUDA_LIBRARIES})
+target_link_libraries(a_star_parallel ${catkin_LIBRARIES} ${CUDA_LIBRARIES} MyLibrary1)
 
 
 add_executable(mappublish src/mappublish.cpp)
-target_link_libraries(mappublish ${catkin_LIBRARIES})
+target_link_libraries(mappublish ${catkin_LIBRARIES} MyLibrary1)
 
 
 add_executable(a_star src/a_star.cpp)
-target_link_libraries(a_star ${catkin_LIBRARIES})
+target_link_libraries(a_star ${catkin_LIBRARIES} MyLibrary1)
+
+add_executable(parallel_time src/parallel_time.cpp)
+target_link_libraries(parallel_time ${catkin_LIBRARIES}  ${CUDA_LIBRARIES} MyLibrary MyLibrary1)
+
 
 
 ## Declare a C++ library

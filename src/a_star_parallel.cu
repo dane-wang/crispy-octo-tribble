@@ -20,9 +20,12 @@
 #include <thrust/merge.h>
 #include <queue>
 
+#include "graph_search/parallel_explore.cuh"
+
 __device__ bool path_found_gpu;
 __device__ int neighbor_gpu[4];
 __device__ int goal_gpu;
+
 
 struct is_negative
 {
@@ -185,6 +188,8 @@ int main(int argc, char** argv)
 
   thrust::device_vector<int> q_lists_gpu = q_lists;
 
+  // parallel_explore(&graph[0], n, path_found, start, max_thread_size);
+  
   
 
 
