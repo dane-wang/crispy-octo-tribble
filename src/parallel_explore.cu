@@ -116,29 +116,102 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 
 }
 extern "C"
-void parallel_explore(planner::Node* graph, int n, bool path_found, int start_index, int max_thread){
+void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path_to_goal){
+
+  //Setup everything for planning
+  bool path_found = false;
+  int goal = goal_index;
+  thrust::host_vector<int> q_lists;
+  q_lists.push_back(start_index);
+
+  const int map_size = n*n*sizeof(planner::Node);
+
+  planner::Node *map_gpu;
+
+  int neighbor[4] = {1, -1, n, -n};
+
+  //Copy all needed variables to gpu
+  cudaMalloc( (void**)&map_gpu, map_size );
+  cudaMemcpy(map_gpu, graph, map_size, cudaMemcpyHostToDevice);
+
+  cudaMemcpyToSymbol(path_found_gpu, &path_found,  sizeof(bool));
+  cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  4*sizeof(int));
+  cudaMemcpyToSymbol(goal_gpu, &goal,  sizeof(int));
+
+  //q list on gpu
+  thrust::device_vector<int> q_lists_gpu = q_lists;
+
+  while(q_lists_gpu.size()!=0 && !path_found){
+    int q_size = q_lists_gpu.size();
+
+    //new_q is the list store the frontier generated from this step of exploration
+    thrust::device_vector<int> new_q_lists_gpu(4*q_size);
+    thrust::fill(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), -1);
+
+
+    //Determine how many thread should be launched
+    int thread_size = min(max_thread, q_size);
+
+
+    //Launch the kernel to explore the map
+    explore<<<1,thread_size>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(new_q_lists_gpu.data()));
+    cudaDeviceSynchronize();
+    cudaMemcpyFromSymbol(&path_found, path_found_gpu,  sizeof(bool), 0, cudaMemcpyDeviceToHost );
+    // cudaMemcpy(&graph, map_gpu,  map_size, cudaMemcpyDeviceToHost );
+
+
+    // Remove all element that is not used during the exploration and repeated value
+    
+    new_q_lists_gpu.erase(thrust::remove_if(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), is_negative()),  new_q_lists_gpu.end() );
+    
+    new_q_lists_gpu.erase(thrust::unique(new_q_lists_gpu.begin(), new_q_lists_gpu.end()), new_q_lists_gpu.end() );
+    
+    // Create new q list based on origional and updated q
+    if (q_size <= max_thread) {
+      q_lists_gpu.clear();
+      q_lists_gpu = new_q_lists_gpu;
+      new_q_lists_gpu.clear();
+    }
+    else {
+      
+      q_lists_gpu.erase(q_lists_gpu.begin(), q_lists_gpu.begin()+max_thread );
+      q_lists_gpu.insert(q_lists_gpu.end(), new_q_lists_gpu.begin(), new_q_lists_gpu.end() );
+      new_q_lists_gpu.clear();
+
+      // //sort the q_list based on the f value
+      thrust::device_vector<float> f_value(q_lists_gpu.size());
+      get_f<<<1, q_lists_gpu.size()>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
+      thrust::sort_by_key(f_value.begin(), f_value.end(), q_lists_gpu.begin() );
+    }
 
     
-    thrust::host_vector<int> q_lists;
-    q_lists.push_back(start_index);
+    //q_size = q_lists_gpu.size();
+    // thrust::device_vector<float> h_value(q_size);
 
-    const int map_size = n*n*sizeof(planner::Node);
+    // if (q_size > 1024) {
+    //   int block = q_size / 1024 + 1;
+      
+    //   get_h<<<block, 1024>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(&h_value[0]), q_size );
 
-    planner::Node *map_gpu;
+    //   thrust::sort_by_key(h_value.begin(), h_value.end(), q_lists_gpu.begin() );
 
-    int neighbor[4] = {1, -1, n, -n};
+    // }
 
-    cudaMalloc( (void**)&map_gpu, map_size );
-    cudaMemcpy(map_gpu, &graph, map_size, cudaMemcpyHostToDevice);
+    if (path_found){
+      cudaMemcpy(graph, map_gpu,  map_size, cudaMemcpyDeviceToHost );
+      int path1 = goal;
+      while (path1 != start_index)
+        {  
+          path_to_goal.push_back(path1);
+          graph[path1].path = true;
+          // path.push_back(path1);
+          path1 = graph[path1].parent;
+        }
 
-    cudaMemcpyToSymbol(path_found_gpu, &path_found,  sizeof(bool));
-    cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  4*sizeof(int));
-    // cudaMemcpyToSymbol(goal_gpu, &goal,  sizeof(int));
+
+    }
+  }
 
 
-    thrust::device_vector<int> q_lists_gpu = q_lists;
-    thrust::device_vector<float> f_value(q_lists_gpu.size());
-    get_f<<<1, q_lists_gpu.size()>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
-    
-
+ 
 }

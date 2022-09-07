@@ -22,5 +22,5 @@
 //   extern "C"
 // #endif
 extern "C" 
-void parallel_explore(planner::Node* graph, int n, bool path_found, int start_index, int max_thread);
+void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path);
 #endif
