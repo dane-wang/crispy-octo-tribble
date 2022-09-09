@@ -17,7 +17,7 @@ extern "C" void parallel_explore(planner::Node* graph, int n, int start_index, i
 int main(int argc, char** argv){
     ros::init(argc, argv, "parallel_planning_timing");
     //generate map info from the config file
-    int n, max_thread_size;
+    int n, max_thread_size, use_parallel_planning;
     std::vector<int> start_coord, goal_coord;
     std::vector<int> obstacles;
     XmlRpc::XmlRpcValue xml_obstacles;
@@ -27,6 +27,8 @@ int main(int argc, char** argv){
     ros::param::get("goal_position", goal_coord);
     ros::param::get("obstacles", xml_obstacles);
     ros::param::get("max_thread", max_thread_size);
+    ros::param::get("use_parallel", use_parallel_planning);
+    
 
     // Initialize the start and goal node
     int start = start_coord[0]+start_coord[1] * n;
@@ -46,7 +48,14 @@ int main(int argc, char** argv){
 
     std::vector<int> path;
 
-    parallel_explore(&graph[0], n, start, goal, max_thread_size, path);
+    if (use_parallel_planning) 
+    {
+        parallel_explore(&graph[0], n, start, goal, max_thread_size, path);
+    }
+    else{
+        planner::sequential_explore(&graph[0], n, start, goal, path);
+    }
+    
 
     std::cout<< "Path length is "<<path.size()<< std::endl;
 
