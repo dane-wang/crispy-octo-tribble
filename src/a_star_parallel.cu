@@ -23,7 +23,7 @@
 #include "graph_search/parallel_explore.cuh"
 
 __device__ bool path_found_gpu;
-__device__ int neighbor_gpu[4];
+__device__ int neighbor_gpu[8];
 __device__ int goal_gpu;
 
 
@@ -76,11 +76,20 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
   }
 
   if (!path_found_gpu){
-    for (int i=0; i<4; i++)
+    for (int i=0; i<8; i++)
     {   
       
       
       int new_index = explored_index + neighbor_gpu[i];
+      float cost;
+      
+      if (i<4){
+        cost = 1;
+      }
+      else {
+        cost = sqrt(2.0);
+      }
+
       bool edge_detect = true;
 
       
@@ -98,7 +107,7 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 
       if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
       {
-        graph[new_index].g = graph[explored_index].g + 1;
+        graph[new_index].g = graph[explored_index].g + cost;
           
         float h_1 = sqrt(pow((graph[new_index].x-graph[goal_gpu].x),2) + pow((graph[new_index].y-graph[goal_gpu].y),2));
           // printf("%f", h_1);
@@ -109,13 +118,13 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
         graph[new_index].parent = explored_index;
         graph[new_index].frontier = true;
         
-        new_q[4*tid+i] = new_index;
+        new_q[8*tid+i] = new_index;
       }
       else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
       {
-        if (graph[new_index].g > graph[explored_index].g + 1)
+        if (graph[new_index].g > graph[explored_index].g + cost)
         {
-          graph[new_index].g = graph[explored_index].g + 1;
+          graph[new_index].g = graph[explored_index].g + cost;
           graph[new_index].f = graph[new_index].h + graph[new_index].g;
           graph[new_index].parent = explored_index;
         }
@@ -183,13 +192,13 @@ int main(int argc, char** argv)
 
   planner::Node *map_gpu;
 
-  int neighbor[4] = {1, -1, n, -n};
+  int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
 
   cudaMalloc( (void**)&map_gpu, map_size );
   cudaMemcpy(map_gpu, &graph, map_size, cudaMemcpyHostToDevice);
 
   cudaMemcpyToSymbol(path_found_gpu, &path_found,  sizeof(bool));
-  cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  4*sizeof(int));
+  cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  8*sizeof(int));
   cudaMemcpyToSymbol(goal_gpu, &goal,  sizeof(int));
 
 
@@ -206,7 +215,7 @@ int main(int argc, char** argv)
       int q_size = q_lists_gpu.size();
 
       //new_q is the list store the frontier generated from this step of exploration
-      thrust::device_vector<int> new_q_lists_gpu(4*q_size);
+      thrust::device_vector<int> new_q_lists_gpu(8*q_size);
       thrust::fill(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), -1);
 
 

@@ -7,6 +7,7 @@
 #include "graph_search/planner1.h"
 #include <algorithm>
 #include <xmlrpcpp/XmlRpcValue.h>
+#include <cmath>
 
 int main (int argc, char **argv) 
 { 

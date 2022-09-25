@@ -1,6 +1,6 @@
-map_size: 30 #[width, height] size of the map
-start_position: [25, 28] # The x and y location of the start point
-goal_position: [5, 0]  #The x and y location of the goal point
+map_size: 50 #[width, height] size of the map
+start_position: [0, 0]   # The x and y location of the start point
+goal_position: [49, 30] #The x and y location of the goal point
 obstacles: [[10,10], [10,15], [12,12], [21,23]]
-max_thread: 10 #The maximum thread of GPU can be used for the planning. AKA the maximum number of nodes can be explored each time
-use_parallel: 0 #Determine if we are using parallel planning or no
+max_thread: 2000 #The maximum thread of GPU can be used for the planning. AKA the maximum number of nodes can be explored each time
+use_parallel: 1 #Determine if we are using parallel planning or no
