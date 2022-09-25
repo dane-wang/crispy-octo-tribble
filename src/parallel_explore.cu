@@ -81,7 +81,11 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 
       
                 
-      if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || (explored_index%(n-1) ==0 && neighbor_gpu[i] == 1 &&explored_index!=0) || new_index<0 || new_index >= n*n){
+      // if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || (explored_index%(n-1) ==0 && neighbor_gpu[i] == 1 &&explored_index!=0) || new_index<0 || new_index >= n*n){
+      //   edge_detect = false;
+      // }
+
+      if ((explored_index%n ==0 && (neighbor_gpu[i] == -1 || neighbor_gpu[i] == n-1 || neighbor_gpu[i] == -n-1 )) || ((explored_index+1)%n ==0 && (neighbor_gpu[i] == 1 || neighbor_gpu[i] == n+1 || neighbor_gpu[i] == -n+1 )) || new_index<0 || new_index >= n*n){
         edge_detect = false;
       }
 

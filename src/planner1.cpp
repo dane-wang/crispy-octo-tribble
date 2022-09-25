@@ -88,7 +88,7 @@ void planner::sequential_explore(planner::Node* graph, int n, int start_index, i
                 //Check if the new index possible (like if it will go out of the map)
                 bool edge_detect = true;
 
-                if ((explored_index%n ==0 && neighbor[i] == -1) || (explored_index%(n-1) ==0 && neighbor[i] == 1 && explored_index!=0) || new_index<0 || new_index >= n*n){
+                if ((explored_index%n ==0 && neighbor[i] == -1) || ((explored_index+1)%n ==0 && neighbor[i] == 1) || new_index<0 || new_index >= n*n){
                     edge_detect = false;
                 }
 
@@ -132,10 +132,22 @@ void planner::sequential_explore(planner::Node* graph, int n, int start_index, i
         }
         //std::cout << q_list.size() << std::endl;
         
-    }
+    }          
 
-            
+}
+
+bool planner::edge_detection(int explored_index, int n, int i, int* neighbor) {
+
+    bool edge_detect = true;
+    int new_index = explored_index + neighbor[i];
+
+    // int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
+
+    if ((explored_index%n ==0 && (neighbor[i] == -1 || neighbor[i] == n-1 || neighbor[i] == -n-1 )) || (explored_index%(n-1) ==0 && (neighbor[i] == 1 || neighbor[i] == n+1 || neighbor[i] == -n+1 ) && explored_index!=0) || new_index<0 || new_index >= n*n){
+            edge_detect = false;
+        }
 
 
 
+    return edge_detect;
 }

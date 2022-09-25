@@ -35,6 +35,8 @@ namespace planner
 
     void sequential_explore(planner::Node* graph, int n, int start_index, int goal_index, std::vector<int>& path_to_goal);
 
+    bool edge_detection(int explored_index, int n, int i, int* neighbor);
+
 }
 
 

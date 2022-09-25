@@ -47,7 +47,7 @@ int main (int argc, char **argv)
     q_list.push_back({(float) start, graph[start].f});
     //std::cout << q_list.size() << std::endl;
 
-    int neighbor[4] = {1, -1, n, -n};
+    int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
 
 
     // 节点句柄
@@ -89,21 +89,23 @@ int main (int argc, char **argv)
 
             //std::cout << new_explore_index << std::endl;
             if (!path_found){
-                for (int i=0; i<4; i++)
+                for (int i=0; i<8; i++)
                 {
                     int new_index = explored_index + neighbor[i];
+
+                    float cost = (i < 4) ? 1 : sqrt(2);
 
                     //Check if the new index possible (like if it will go out of the map)
                     bool edge_detect = true;
 
-                    if ((explored_index%n ==0 && neighbor[i] == -1) || (explored_index%(n-1) ==0 && neighbor[i] == 1 && explored_index!=0) || new_index<0 || new_index >= n*n){
+                    if ((explored_index%n ==0 && (neighbor[i] == -1 || neighbor[i] == n-1 || neighbor[i] == -n-1 )) || ((explored_index+1)%n ==0 && (neighbor[i] == 1 || neighbor[i] == n+1 || neighbor[i] == -n+1 )) || new_index<0 || new_index >= n*n){
                         edge_detect = false;
                     }
 
 
                     if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
                     {
-                        graph[new_index].g = graph[explored_index].g + 1;
+                        graph[new_index].g = graph[explored_index].g + cost;
                         graph[new_index].h = planner::h_calculation(&graph[new_index], &graph[goal]);
                         graph[new_index].f = graph[new_index].h + graph[new_index].g;
                         graph[new_index].parent = explored_index;
@@ -113,9 +115,9 @@ int main (int argc, char **argv)
                     }
                     else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
                     {
-                        if (graph[new_index].g > graph[explored_index].g + 1)
+                        if (graph[new_index].g > graph[explored_index].g + cost)
                         {
-                            graph[new_index].g = graph[explored_index].g + 1;
+                            graph[new_index].g = graph[explored_index].g + cost;
                             graph[new_index].f = graph[new_index].h + graph[new_index].g;
                             graph[new_index].parent = explored_index;
                             q_list.push_back({(float) new_index, graph[new_index].f});

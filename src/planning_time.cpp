@@ -11,6 +11,7 @@
 #include <iostream>
 #include <queue>
 #include "graph_search/parallel_explore.cuh"
+#include <chrono>
 
 extern "C" void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path);
 
@@ -48,6 +49,7 @@ int main(int argc, char** argv){
 
     std::vector<int> path;
 
+    auto start_time = std::chrono::high_resolution_clock::now();
     if (use_parallel_planning) 
     {
         parallel_explore(&graph[0], n, start, goal, max_thread_size, path);
@@ -55,9 +57,12 @@ int main(int argc, char** argv){
     else{
         planner::sequential_explore(&graph[0], n, start, goal, path);
     }
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_time);
+    std::cout << "Exectuation time is " << duration.count() << std::endl;
     
 
-    std::cout<< "Path length is "<<path.size()<< std::endl;
+    // std::cout<< "Path length is "<<path.size()<< std::endl;
 
     ros::NodeHandle nh; 
 
