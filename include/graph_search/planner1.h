@@ -16,7 +16,7 @@ namespace planner
     {
         int x,y, parent= 0;
         bool start = false, goal = false, path = false;
-        bool obstacle = false, explored = false, frontier = false;
+        bool obstacle = false, hidden_obstacle = false, explored = false, frontier = false;
         // cost from start and estimate cost to goal
         
         float h = INFINITY, g = INFINITY, f = INFINITY;
