@@ -33,9 +33,20 @@ namespace planner
     // //Generate the map array for future calculation
     void map_generation(Node* graph, int n, int start, int goal, std::vector<int> & obstacles);
 
+    void add_hidden_obstacles(Node* graph, std::vector<int> & hidden_obstacles);
+
     void sequential_explore(planner::Node* graph, int n, int start_index, int goal_index, std::vector<int>& path_to_goal);
 
     bool edge_detection(int explored_index, int n, int i, int* neighbor);
+
+    int coordtoindex(std::vector<int>& coordinate, int n);
+
+    std::vector<int> indextocoord(int index, int n);
+
+
+    void obstacle_detection(int current, planner::Node* graph, int n);
+
+
 
 }
 

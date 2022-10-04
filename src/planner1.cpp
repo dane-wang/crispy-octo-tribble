@@ -53,6 +53,9 @@ void planner::sequential_explore(planner::Node* graph, int n, int start_index, i
     //Initialize everything
     bool path_found = false;
     std::vector<std::vector<float> > q_list;
+    graph[start_index].g = 0;
+    graph[start_index].h = h_calculation(&graph[start_index], &graph[goal_index]);
+    graph[start_index].f = graph[start_index].g + graph[start_index].h;
     q_list.push_back({(float) start_index, graph[start_index].f});
     int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
 
@@ -152,3 +155,59 @@ bool planner::edge_detection(int explored_index, int n, int i, int* neighbor) {
 
     return edge_detect;
 }
+
+
+int planner::coordtoindex(std::vector<int>& coordinate, int n){
+
+    int index = coordinate[0] + coordinate[1]*n;
+    return index;
+
+}
+
+std::vector<int> planner::indextocoord(int index, int n){
+    std::vector<int> coordinate(2);
+
+    coordinate[0] = index%n;
+    coordinate[1] = index/n;
+
+    return coordinate;
+
+}
+
+void planner::obstacle_detection(int current, planner::Node* graph, int n){
+
+    std::vector<int> curr_coordinate = planner::indextocoord(current, n);
+
+    
+
+    for (int i = -2; i<3; i++){
+        for (int j = -2; j<3; j++){
+            std::vector<int> new_coordinate = {curr_coordinate[0]+i, curr_coordinate[1]+j };
+
+            if (new_coordinate[0]>=n || new_coordinate[0]<0 || new_coordinate[1]>=n || new_coordinate[1]<0  ) continue;
+
+            int new_index = planner::coordtoindex(new_coordinate, n);
+
+            if (graph[new_index].hidden_obstacle){
+
+                // std::cout <<"checking" << std::endl;
+
+                graph[new_index].hidden_obstacle = false;
+                graph[new_index].obstacle = true;
+
+            } 
+        }
+    }
+
+    
+
+}
+
+void planner::add_hidden_obstacles(Node* graph, std::vector<int> & hidden_obstacles){
+
+    for (int i =0; i<hidden_obstacles.size(); i++){
+        graph[hidden_obstacles[i]].hidden_obstacle = true;
+    }
+
+}
+

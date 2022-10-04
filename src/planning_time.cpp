@@ -21,12 +21,15 @@ int main(int argc, char** argv){
     int n, max_thread_size, use_parallel_planning;
     std::vector<int> start_coord, goal_coord;
     std::vector<int> obstacles;
+    std::vector<int> hidden_obstacles;
     XmlRpc::XmlRpcValue xml_obstacles;
+    XmlRpc::XmlRpcValue xml_hidden_obstacles;
 
     ros::param::get("map_size", n);
     ros::param::get("start_position", start_coord);
     ros::param::get("goal_position", goal_coord);
     ros::param::get("obstacles", xml_obstacles);
+    ros::param::get("hidden_obstacles", xml_hidden_obstacles);
     ros::param::get("max_thread", max_thread_size);
     ros::param::get("use_parallel", use_parallel_planning);
     
@@ -42,7 +45,7 @@ int main(int argc, char** argv){
 
     // 发布消息 话题名字 队列大小
 	ros::Publisher pub = nh.advertise<graph_search::my_msg> ("planning_info", 100);
-    ros::Rate loop_rate(5);
+    ros::Rate loop_rate(3);
     
     //geometry_msgs::Point start_goal;
     graph_search::my_msg map;
@@ -53,23 +56,36 @@ int main(int argc, char** argv){
         int obstacles_index =  (int)xml_obstacles[i][0] +  (int)xml_obstacles[i][1] * n;
         obstacles.push_back( obstacles_index);
     }
-    planner::Node graph[n*n];
-    planner::map_generation(&graph[0], n, start, goal, obstacles);
 
+    // Initialize the hidden obstacles list
+    for(int i=0; i< xml_hidden_obstacles.size(); i++){
+        int hidden_obstacles_index =  (int)xml_hidden_obstacles[i][0] +  (int)xml_hidden_obstacles[i][1] * n;
+        hidden_obstacles.push_back( hidden_obstacles_index);
+    }
+
+    planner::Node graph[n*n];
+    planner::Node graph_copy[n*n];
+    planner::map_generation(&graph[0], n, start, goal, obstacles);
+    planner::add_hidden_obstacles(&graph[0], hidden_obstacles);
+
+    
     std::vector<int> path;
+
+  
 
     while (ros::ok()){
         while (ros::ok() && current!=goal)
         {
            
             if (!path_found){
+                std::copy(graph, graph+n*n, graph_copy);
                 auto start_time = std::chrono::high_resolution_clock::now();
                 if (use_parallel_planning) 
                 {
-                    parallel_explore(&graph[0], n, start, goal, max_thread_size, path);
+                    parallel_explore(&graph_copy[0], n, current, goal, max_thread_size, path);
                 }
                 else{
-                    planner::sequential_explore(&graph[0], n, start, goal, path);
+                    planner::sequential_explore(&graph_copy[0], n, current, goal, path);
                 }
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_time);
@@ -78,55 +94,44 @@ int main(int argc, char** argv){
                 path_found = true;
 
             }
-        
-            // std::cout<< "Current position is "<<current<< std::endl;
+           
+
             current = path.back();
             path.pop_back();
-
-            // std::cout<< "Path length is "<<path.size()<< std::endl;
+            planner::obstacle_detection(current, &graph[0], n);
+            // std::cout<< "Path length is "<<current<< std::endl;
 
             
 
             std::vector<int8_t> v(n*n, 0);
+
+            for (int k =0; k< path.size(); k++){
+
+                v[path[k]] = 250;
+            }
+
             for (int y =0; y<n; y++)
             { 
-            for (int x=0; x<n; x++){
+                for (int x=0; x<n; x++){
 
-                if (graph[y*n+x].start) {
-                
-                    v[y*n+x] = 120;
-                    }
-                else if (y*n+x == current){
-                    v[y*n+x] = 200;
-                    }
-                else if (graph[y*n+x].goal)
-                {
-                    v[y*n+x] = 140;
-                    }
-                
-                else if (graph[y*n+x].path){
-                    v[y*n+x] = 250;
-                    }
-                else if (graph[y*n+x].obstacle){
-                    v[y*n+x] = 100;
-                    }
+                    if (graph[y*n+x].start) {
+                    
+                        v[y*n+x] = 120;
+                        }
+                    else if (graph[y*n+x].obstacle){
+                        v[y*n+x] = 100;
+                        }
 
-                
-                else{
-                    v[y*n+x] = 10;
-                    }
-                // else if (graph[y*n+x].explored){
-                //     v[y*n+x] = 200;
-                //     }
-                
-                
+                    else if (y*n+x == current){
+                        v[y*n+x] = 200;
+                        }
+                    else if (graph[y*n+x].goal)
+                    {
+                        v[y*n+x] = 140;
+                        }                                         
                 }
             }
-            // for (int k =0; k< n*n; k++){
-
-            //   std::cout<< static_cast<int16_t>(v[k]) << std::endl;
-
-            // }
+       
                 
             map.points = v;
             
@@ -134,6 +139,18 @@ int main(int argc, char** argv){
             pub.publish(map);
             ros::spinOnce(); 
             loop_rate.sleep(); 
+            if (!path.empty()){
+                for (int i =(path.size()-1); i> (path.size()-7); i--){
+                int path_index = path[i];
+                if (graph[path_index].obstacle) {
+                    path_found = false;
+                    path.clear();
+                    break;
+                    }
+
+                }
+            }
+            
         }
 
         if (current == goal){

@@ -46,7 +46,7 @@ int main (int argc, char **argv)
 
     std::vector<std::vector<float> > q_list;
     q_list.push_back({(float) start, graph[start].f});
-    //std::cout << q_list.size() << std::endl;
+    std::cout << graph[start].f << std::endl;
 
     int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
 

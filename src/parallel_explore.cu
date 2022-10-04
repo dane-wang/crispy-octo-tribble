@@ -134,6 +134,9 @@ extern "C"
 void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path_to_goal){
 
   //Setup everything for planning
+  graph[start_index].g = 0;
+  graph[start_index].h = h_calculation(&graph[start_index], &graph[goal_index]);
+  graph[start_index].f = graph[start_index].g + graph[start_index].h;
   bool path_found = false;
   int goal = goal_index;
   thrust::host_vector<int> q_lists;
