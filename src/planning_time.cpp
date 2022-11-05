@@ -14,6 +14,9 @@
 #include <chrono>
 
 extern "C" void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path);
+extern "C" void gpu_warmup();
+
+
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "parallel_planning_timing");
@@ -71,6 +74,11 @@ int main(int argc, char** argv){
     
     std::vector<int> path;
 
+    // gpu_warmup();
+
+  
+
+
   
 
     while (ros::ok()){
@@ -80,6 +88,7 @@ int main(int argc, char** argv){
             if (!path_found){
                 std::copy(graph, graph+n*n, graph_copy);
                 auto start_time = std::chrono::high_resolution_clock::now();
+                // std::cout << current << std::endl;
                 if (use_parallel_planning) 
                 {
                     parallel_explore(&graph_copy[0], n, current, goal, max_thread_size, path);
@@ -88,14 +97,15 @@ int main(int argc, char** argv){
                     planner::sequential_explore(&graph_copy[0], n, current, goal, path);
                 }
                 auto stop = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_time);
-                std::cout << "Exectuation time is " << duration.count() << std::endl;
+                float duration = std::chrono::duration<float, std::milli>(stop - start_time).count();
+                // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_time);
+                std::cout << "Exectuation time is " << duration << std::endl;
                 std::cout<< "Path length is "<<path.size()<< std::endl;
                 path_found = true;
 
             }
            
-
+            //Check for hidden obstacles
             current = path.back();
             path.pop_back();
             planner::obstacle_detection(current, &graph[0], n);
@@ -137,18 +147,19 @@ int main(int argc, char** argv){
             
         
             pub.publish(map);
-            ros::spinOnce(); 
+            // ros::spinOnce(); 
             loop_rate.sleep(); 
             if (!path.empty()){
+                //Check if we will hit obstacles on our path
                 for (int i =(path.size()-1); i> (path.size()-7); i--){
-                int path_index = path[i];
-                if (graph[path_index].obstacle) {
-                    path_found = false;
-                    path.clear();
-                    break;
-                    }
+                    int path_index = path[i];
+                    if (graph[path_index].obstacle) {
+                        path_found = false;
+                        path.clear();
+                        break;
+                        }
 
-                }
+                    }
             }
             
         }

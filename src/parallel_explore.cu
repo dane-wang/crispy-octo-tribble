@@ -130,6 +130,13 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
   }
 
 }
+
+__global__ void warmup(int* a)
+{
+    a = a+1;
+}
+
+
 extern "C"
 void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path_to_goal){
 
@@ -199,6 +206,7 @@ void parallel_explore(planner::Node* graph, int n, int start_index, int goal_ind
       // //sort the q_list based on the f value
       thrust::device_vector<float> f_value(q_lists_gpu.size());
       get_f<<<1, q_lists_gpu.size()>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
+      cudaDeviceSynchronize();
       thrust::sort_by_key(f_value.begin(), f_value.end(), q_lists_gpu.begin() );
     }
 
@@ -225,6 +233,7 @@ void parallel_explore(planner::Node* graph, int n, int start_index, int goal_ind
           // path.push_back(path1);
           path1 = graph[path1].parent;
         }
+      // cudaFree(map_gpu);
 
 
     }
@@ -232,4 +241,16 @@ void parallel_explore(planner::Node* graph, int n, int start_index, int goal_ind
 
 
  
+}
+
+extern "C"
+void gpu_warmup() {
+
+    //GPU warm up
+    int a = 0;
+    int* a_gpu;
+    cudaMalloc( (void**)&a_gpu, sizeof(int) );
+    cudaMemcpy(a_gpu, &a, sizeof(int), cudaMemcpyHostToDevice);
+    warmup<<<1,1>>>(a_gpu);
+    cudaDeviceSynchronize();
 }

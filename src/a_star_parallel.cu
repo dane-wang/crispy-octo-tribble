@@ -137,6 +137,7 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 
 
 
+
   
 
 
@@ -171,6 +172,8 @@ int main(int argc, char** argv)
 
   int path1 = goal;
   bool path_found = false;
+
+
 
 
   ros::NodeHandle nh; 
