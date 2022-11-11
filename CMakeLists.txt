@@ -140,7 +140,7 @@ include_directories(
 
 ADD_LIBRARY(MyLibrary1 STATIC include/graph_search/planner1.h src/planner1.cpp )
 
-CUDA_ADD_LIBRARY(MyLibrary STATIC include/graph_search/parallel_explore.cuh src/parallel_explore.cu )
+CUDA_ADD_LIBRARY(MyLibrary STATIC include/graph_search/parallel_explore.cuh src/parallel_explore.cu include/graph_search/parallel_dijkstra.cuh src/parallel_dijkstra.cu )
 set_target_properties( MyLibrary PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties( MyLibrary PROPERTIES LINKER_LANGUAGE CXX)
 

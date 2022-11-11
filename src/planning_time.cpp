@@ -14,6 +14,7 @@
 #include <chrono>
 
 extern "C" void parallel_explore(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path);
+extern "C" void parallel_dijkstra(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path_to_goal);
 extern "C" void gpu_warmup();
 
 
