@@ -114,7 +114,7 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
         graph[new_index].parent = explored_index;
         graph[new_index].frontier = true;
         
-        new_q[4*tid+i] = new_index;
+        new_q[8*tid+i] = new_index;
       }
       else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
       {
@@ -190,6 +190,7 @@ void parallel_explore(planner::Node* graph, int n, int start_index, int goal_ind
     new_q_lists_gpu.erase(thrust::remove_if(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), is_negative()),  new_q_lists_gpu.end() );
     
     new_q_lists_gpu.erase(thrust::unique(new_q_lists_gpu.begin(), new_q_lists_gpu.end()), new_q_lists_gpu.end() );
+    
     
     // Create new q list based on origional and updated q
     if (q_size <= max_thread) {

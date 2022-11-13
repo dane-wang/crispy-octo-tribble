@@ -1,5 +1,5 @@
-#ifndef PARALLEL_H
-#define PARALLEL_H
+#ifndef PARALLEL_D
+#define PARALLEL_D
 #include <time.h>  
 #include <vector>
 #include "graph_search/planner1.h"
@@ -19,5 +19,5 @@
 
 
 extern "C" 
-void parallel_dijkstra(planner::Node* graph, int n, int start_index, int goal_index, int max_thread, std::vector<int>& path);
+void parallel_dijkstra(planner::Node* graph, int n, int goal_index, int max_thread);
 #endif

@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.0.2)
 
 project(graph_search)
 
-set(CMAKE_CUDA_COMPILER  /usr/local/cuda-11.5/bin/nvcc)
+
+# set(CMAKE_CUDA_COMPILER  /usr/lib/nvidia-cuda-toolkit/bin/nvcc)
 
 
 
@@ -158,6 +159,11 @@ target_link_libraries(a_star ${catkin_LIBRARIES} MyLibrary1)
 
 add_executable(planning_timing src/planning_time.cpp)
 target_link_libraries(planning_timing ${catkin_LIBRARIES}  ${CUDA_LIBRARIES} MyLibrary MyLibrary1)
+
+
+add_executable(dijkstra_visualization src/dijkstra_visualization.cpp)
+target_link_libraries(dijkstra_visualization ${catkin_LIBRARIES}  ${CUDA_LIBRARIES} MyLibrary MyLibrary1)
+
 
 
 

@@ -1,0 +1,17 @@
+<launch>
+ <!-- Load parameters from yaml file -->
+ <rosparam file="$(find graph_search)/configs/map.yaml" command="load"/>
+ <!-- Start the planning node -->
+ <node name="dijkstra_visualization" pkg="graph_search" type="dijkstra_visualization" output="screen" required="true">
+ </node>
+
+<!-- Start the map publishing node -->
+ <node name="map_publish" pkg="graph_search" type="mappublish" output="screen">
+ </node>
+
+<!-- Start RVIZ for visualization -->
+<!-- 在rviz中显示-->
+<node name="rviz" pkg="rviz" type="rviz" args="-d $(find graph_search)/configs/planning_visualization.rviz" required="true" />
+
+
+</launch>

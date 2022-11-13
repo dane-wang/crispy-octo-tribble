@@ -47,6 +47,26 @@ void planner::map_generation(planner::Node* graph, int n, int start, int goal, s
 
 
 }
+void planner::map_generation_dijkstra(Node* graph, int n, int start, int goal, std::vector<int> & obstacles){
+
+    for (int y =0; y<n; y++){
+
+        for (int x=0; x<n; x++){
+
+            graph[y*n+x].x = x;
+            graph[y*n+x].y = y;
+        }
+    } 
+
+    graph[start].start = true;
+    graph[start].g = 0;
+    graph[goal].goal = true;
+
+    for (int i =0; i<obstacles.size(); i++){
+        graph[obstacles[i]].obstacle = true;
+    }
+  
+}
 
 void planner::sequential_explore(planner::Node* graph, int n, int start_index, int goal_index, std::vector<int>& path_to_goal){
 
