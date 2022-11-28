@@ -33,8 +33,6 @@ namespace planner
     // //Generate the map array for future calculation
     void map_generation(Node* graph, int n, int start, int goal, std::vector<int> & obstacles);
 
-    void map_generation_dijkstra(Node* graph, int n, int start, int goal, std::vector<int> & obstacles);
-
     void add_hidden_obstacles(Node* graph, std::vector<int> & hidden_obstacles);
 
     void sequential_explore(planner::Node* graph, int n, int start_index, int goal_index, std::vector<int>& path_to_goal);

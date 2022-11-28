@@ -71,12 +71,14 @@ int main(int argc, char** argv){
     planner::Node graph[n*n];
     planner::Node graph_copy[n*n];
     planner::map_generation(&graph[0], n, start, goal, obstacles);
-    planner::add_hidden_obstacles(&graph[0], hidden_obstacles);
+    // planner::add_hidden_obstacles(&graph[0], hidden_obstacles);
 
     
     std::vector<int> path;
 
-    // gpu_warmup();
+    gpu_warmup();
+
+    // parallel_dijkstra(&graph[0], n, goal, max_thread_size);
 
   
 

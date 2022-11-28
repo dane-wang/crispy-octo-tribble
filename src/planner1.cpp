@@ -34,12 +34,12 @@ void planner::map_generation(planner::Node* graph, int n, int start, int goal, s
     }
     graph[start].start = true;
     graph[start].g = 0;
-    graph[start].h = h_calculation(&graph[start], &graph[goal]);
-    graph[start].f = graph[start].h + graph[start].g;
-    graph[start].explored = true;
+    // graph[start].h = h_calculation(&graph[start], &graph[goal]);
+    // graph[start].f = graph[start].h + graph[start].g;
+    // graph[start].explored = true;
 
     graph[goal].goal = true;
-    graph[goal].h = 0;
+    // graph[goal].h = 0;
 
     for (int i =0; i<obstacles.size(); i++){
         graph[obstacles[i]].obstacle = true;
@@ -47,26 +47,7 @@ void planner::map_generation(planner::Node* graph, int n, int start, int goal, s
 
 
 }
-void planner::map_generation_dijkstra(Node* graph, int n, int start, int goal, std::vector<int> & obstacles){
 
-    for (int y =0; y<n; y++){
-
-        for (int x=0; x<n; x++){
-
-            graph[y*n+x].x = x;
-            graph[y*n+x].y = y;
-        }
-    } 
-
-    graph[start].start = true;
-    graph[start].g = 0;
-    graph[goal].goal = true;
-
-    for (int i =0; i<obstacles.size(); i++){
-        graph[obstacles[i]].obstacle = true;
-    }
-  
-}
 
 void planner::sequential_explore(planner::Node* graph, int n, int start_index, int goal_index, std::vector<int>& path_to_goal){
 
@@ -74,7 +55,7 @@ void planner::sequential_explore(planner::Node* graph, int n, int start_index, i
     bool path_found = false;
     std::vector<std::vector<float> > q_list;
     graph[start_index].g = 0;
-    graph[start_index].h = h_calculation(&graph[start_index], &graph[goal_index]);
+    if (graph[start_index].h == INFINITY) graph[start_index].h = h_calculation(&graph[start_index], &graph[goal_index]);
     graph[start_index].f = graph[start_index].g + graph[start_index].h;
     q_list.push_back({(float) start_index, graph[start_index].f});
     int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
@@ -120,7 +101,7 @@ void planner::sequential_explore(planner::Node* graph, int n, int start_index, i
                 if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
                 {
                     graph[new_index].g = graph[explored_index].g + cost;
-                    graph[new_index].h = planner::h_calculation(&graph[new_index], &graph[goal_index]);
+                    if (graph[new_index].h == INFINITY) graph[new_index].h = planner::h_calculation(&graph[new_index], &graph[goal_index]);
                     graph[new_index].f = graph[new_index].h + graph[new_index].g;
                     graph[new_index].parent = explored_index;
                     graph[new_index].frontier = true;

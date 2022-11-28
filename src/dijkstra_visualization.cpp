@@ -69,7 +69,7 @@ int main(int argc, char** argv){
 
     planner::Node graph[n*n];
     
-    planner::map_generation_dijkstra(&graph[0], n, start, goal, obstacles);
+    planner::map_generation(&graph[0], n, start, goal, obstacles);
     planner::add_hidden_obstacles(&graph[0], hidden_obstacles);
 
 

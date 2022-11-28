@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <xmlrpcpp/XmlRpcValue.h>
 #include <cmath>
+#include "graph_search/parallel_dijkstra.cuh"
+
+extern "C" void parallel_dijkstra(planner::Node* graph, int n, int goal_index, int max_thread);
 
 int main (int argc, char **argv) 
 { 
@@ -15,7 +18,7 @@ int main (int argc, char **argv)
 	ros::init (argc, argv, "start_and_goal"); 
 	
     //generate map info from the config file
-    int n;
+    int n, max_thread_size;
     std::vector<int> start_coord, goal_coord;
     std::vector<int> obstacles;
     XmlRpc::XmlRpcValue xml_obstacles;
@@ -24,6 +27,7 @@ int main (int argc, char **argv)
     ros::param::get("start_position", start_coord);
     ros::param::get("goal_position", goal_coord);
     ros::param::get("obstacles", xml_obstacles);
+    ros::param::get("max_thread", max_thread_size);
 
     // Initialize the start and goal node
     int start = start_coord[0]+start_coord[1] * n;
@@ -42,11 +46,13 @@ int main (int argc, char **argv)
     
     bool path_found = false;
 
-    
+    parallel_dijkstra(&graph[0], n, goal, max_thread_size);
+
+    graph[start].f = graph[start].g + graph[start].h;
 
     std::vector<std::vector<float> > q_list;
     q_list.push_back({(float) start, graph[start].f});
-    std::cout << graph[start].f << std::endl;
+    // std::cout << graph[start].f << std::endl;
 
     int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
 
@@ -107,7 +113,7 @@ int main (int argc, char **argv)
                     if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
                     {
                         graph[new_index].g = graph[explored_index].g + cost;
-                        graph[new_index].h = planner::h_calculation(&graph[new_index], &graph[goal]);
+                        if (graph[new_index].h == INFINITY) graph[new_index].h = planner::h_calculation(&graph[new_index], &graph[goal]);
                         graph[new_index].f = graph[new_index].h + graph[new_index].g;
                         graph[new_index].parent = explored_index;
                         graph[new_index].frontier = true;

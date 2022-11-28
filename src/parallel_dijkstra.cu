@@ -96,9 +96,9 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
   // graph[explored_index].explored = true;
   // graph[explored_index].frontier = false;
 
-  if (explored_index == 0){
-    printf("I am working on 0" );
-  }
+  // if (explored_index == 0){
+  //   printf("I am working on 0" );
+  // }
 
 
 
@@ -121,7 +121,7 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
     }
 
 
-    if ( graph[new_index].h == INFINITY && edge_detect)
+    if (graph[new_index].obstacle == false && graph[new_index].h == INFINITY && edge_detect)
     {
       graph[new_index].h = g_gpu;
 
@@ -192,7 +192,7 @@ void parallel_dijkstra(planner::Node* graph, int n, int goal_index, int max_thre
     thrust::device_vector<int> new_q_lists_gpu(8*q_size);
     thrust::fill(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), -1);
 
-    g = g+2;
+    g = g+5;
     cudaMemcpyToSymbol(g_gpu, &g,  sizeof(int));
   
 

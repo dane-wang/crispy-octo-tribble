@@ -155,7 +155,7 @@ target_link_libraries(mappublish ${catkin_LIBRARIES} MyLibrary1)
 
 
 add_executable(a_star src/a_star.cpp)
-target_link_libraries(a_star ${catkin_LIBRARIES} MyLibrary1)
+target_link_libraries(a_star ${catkin_LIBRARIES}  ${CUDA_LIBRARIES} MyLibrary MyLibrary1)
 
 add_executable(planning_timing src/planning_time.cpp)
 target_link_libraries(planning_timing ${catkin_LIBRARIES}  ${CUDA_LIBRARIES} MyLibrary MyLibrary1)
