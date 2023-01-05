@@ -24,9 +24,10 @@ namespace planner
 
     };
 
-
+    //Calculate the heuristic value for newly explored node
     float h_calculation(Node* Node1, Node* Node2);
 
+    //Sort the nodes in the q list
     bool sortcol(const std::vector<float>& v1, const std::vector<float>& v2);
     
 

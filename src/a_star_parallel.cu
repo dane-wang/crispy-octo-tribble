@@ -58,7 +58,8 @@ __global__ void explore(T* q,  planner::Node* graph, T* new_q  )
 {
   int tid = threadIdx.x;
   int explored_index = q[tid];
-  int n = neighbor_gpu[3];
+  int n = neighbor_gpu[2];
+  // printf("Hello n is %d\n", n);
 
   graph[explored_index].explored = true;
   graph[explored_index].frontier = false;
