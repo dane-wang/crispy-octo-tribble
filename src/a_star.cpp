@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <xmlrpcpp/XmlRpcValue.h>
 #include <cmath>
+#include <queue>
 #include "graph_search/parallel_dijkstra.cuh"
 
 extern "C" void parallel_dijkstra(planner::Node* graph, int n, int goal_index, int max_thread);
@@ -27,7 +28,7 @@ int main (int argc, char **argv)
     ros::param::get("start_position", start_coord);
     ros::param::get("goal_position", goal_coord);
     ros::param::get("obstacles", xml_obstacles);
-    ros::param::get("max_thread", max_thread_size);
+    // ros::param::get("max_thread", max_thread_size);
 
     // Initialize the start and goal node
     int start = start_coord[0]+start_coord[1] * n;
@@ -40,22 +41,36 @@ int main (int argc, char **argv)
     }
 
     //Generate the map
-    planner::Node graph[n*n];
+    planner::Node* graph = new planner::Node[n*n];
 
     planner::map_generation(&graph[0], n, start, goal, obstacles);
     
     bool path_found = false;
 
-    parallel_dijkstra(&graph[0], n, goal, max_thread_size);
+    // parallel_dijkstra(&graph[0], n, goal, max_thread_size);
 
     graph[start].f = graph[start].g + graph[start].h;
 
-    std::vector<std::vector<float> > q_list;
-    q_list.push_back({(float) start, graph[start].f});
+
+    std::priority_queue< std::vector<float>, std::vector< std::vector<float> >, planner::priority_queue_compare > q_list;
+
+    q_list.push({(float) start, graph[start].f});
     // std::cout << graph[start].f << std::endl;
 
-    int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
+    int neighbors[8][2] = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
 
+    int neighbor[16];
+
+    for (int i =0; i< 8; i++){
+        for (int j=0; j<2; j++){
+
+        neighbor[2*i+j] = neighbors[i][j];
+
+
+
+        }
+
+    }
 
     // 节点句柄
 	ros::NodeHandle nh; 
@@ -73,9 +88,17 @@ int main (int argc, char **argv)
 
         while(ros::ok() && q_list.size()!=0 && !path_found){
             // pop the node with smallest node
-            auto smallest_node = q_list.back();
-            q_list.pop_back();
+            auto smallest_node = q_list.top();
+            q_list.pop();
             int explored_index = smallest_node[0];
+
+            if (graph[explored_index].explored) continue;
+
+
+            int explored_coord[2];
+            explored_coord[0] = explored_index%n;
+            explored_coord[1] = explored_index/n;
+
 
             //std::cout << explored_index << std::endl;
 
@@ -98,16 +121,30 @@ int main (int argc, char **argv)
             if (!path_found){
                 for (int i=0; i<8; i++)
                 {
-                    int new_index = explored_index + neighbor[i];
+                    int neighbor1[2];
+                    neighbor1[0] = neighbor[2*i];
+                    neighbor1[1] = neighbor[2*i+1];
+
+                    int new_coord[2];
+                    new_coord[0] = explored_coord[0] + neighbor1[0];
+                    new_coord[1] = explored_coord[1] + neighbor1[1];
+
+
+                    int new_index = new_coord[0] + new_coord[1]*n;
 
                     float cost = (i < 4) ? 1 : sqrt(2);
+
+                    if (new_index<0 || new_index >= n*n) continue;
+
 
                     //Check if the new index possible (like if it will go out of the map)
                     bool edge_detect = true;
 
-                    if ((explored_index%n ==0 && (neighbor[i] == -1 || neighbor[i] == n-1 || neighbor[i] == -n-1 )) || ((explored_index+1)%n ==0 && (neighbor[i] == 1 || neighbor[i] == n+1 || neighbor[i] == -n+1 )) || new_index<0 || new_index >= n*n){
+                    if ((new_coord[0] >= n) || (new_coord[0] < 0)  || (new_coord[1] >= n) || (new_coord[1] <0 )){
+
                         edge_detect = false;
                     }
+
 
 
                     if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
@@ -118,7 +155,7 @@ int main (int argc, char **argv)
                         graph[new_index].parent = explored_index;
                         graph[new_index].frontier = true;
 
-                        q_list.push_back({(float) new_index, graph[new_index].f});
+                        q_list.push({(float) new_index, graph[new_index].f});
                     }
                     else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
                     {
@@ -127,15 +164,18 @@ int main (int argc, char **argv)
                             graph[new_index].g = graph[explored_index].g + cost;
                             graph[new_index].f = graph[new_index].h + graph[new_index].g;
                             graph[new_index].parent = explored_index;
-                            q_list.push_back({(float) new_index, graph[new_index].f});
-
+                            
+                            if (graph[new_index].explored == true) {
+                                graph[new_index].explored == false;
+                                q_list.push({(float) new_index, graph[new_index].f});
+                            }
                         }
                     }
                     
 
                 }
             
-                std::sort(q_list.begin(), q_list.end(), planner::sortcol);
+                // std::sort(q_list.begin(), q_list.end(), planner::sortcol);
             }
             else{
                 int path1 = goal;
@@ -185,7 +225,7 @@ int main (int argc, char **argv)
            
             // start_goal.x = std::rand()%120+1;
             // start_goal.y = 120;
-            ros::Rate loop_rate(5);
+            ros::Rate loop_rate(10);
             
             map.points = v;
 

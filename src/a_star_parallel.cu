@@ -23,7 +23,7 @@
 #include "graph_search/parallel_explore.cuh"
 
 __device__ bool path_found_gpu;
-__device__ int neighbor_gpu[8];
+__device__ int neighbor_gpu[16];
 __device__ int goal_gpu;
 
 
@@ -53,89 +53,115 @@ __global__ void get_f(T* q,  planner::Node* graph, T1* h, int q_size )
 
 }
 
+
 template <typename T>
-__global__ void explore(T* q,  planner::Node* graph, T* new_q  )
+__global__ void explore(T* q,  planner::Node* graph, T* new_q, int q_size, int n  )
 {
-  int tid = threadIdx.x;
-  int explored_index = q[tid];
-  int n = neighbor_gpu[2];
-  // printf("Hello n is %d\n", n);
+  int tid = blockIdx.x *blockDim.x + threadIdx.x;
+  if (tid < q_size){
+    int explored_index = q[tid];
 
-  graph[explored_index].explored = true;
-  graph[explored_index].frontier = false;
+    int explored_coord[2];
+    explored_coord[0] = explored_index%n;
+    explored_coord[1] = explored_index/n;
 
-  if (graph[explored_index].goal){
-    printf("FOUND");
-    printf("Hello from thread %d, I am exploring %d\n", tid, explored_index);
-    // planner::Node* temp_node = graph[explored_index].parent;
-    // while (!temp_node->start){
-       
-    //     temp_node->path = true;
-    //     temp_node = temp_node->parent;
-    // }
-    path_found_gpu = true;
-  }
+    
+    graph[explored_index].explored = true;
+    graph[explored_index].frontier = false;
 
-  if (!path_found_gpu){
-    for (int i=0; i<8; i++)
-    {   
-      
-      
-      int new_index = explored_index + neighbor_gpu[i];
-      float cost;
-      
-      if (i<4){
-        cost = 1;
-      }
-      else {
-        cost = sqrt(2.0);
-      }
-
-      bool edge_detect = true;
-
-      
-                
-      // if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || ((explored_index+1)%n ==0 && neighbor_gpu[i] == 1 &&explored_index!=0) || new_index<0 || new_index >= n*n){
-      //   edge_detect = false;
-      // }
-
-      if ((explored_index%n ==0 && (neighbor_gpu[i] == -1 || neighbor_gpu[i] == n-1 || neighbor_gpu[i] == -n-1 )) || ((explored_index+1)%n==0 && (neighbor_gpu[i] == 1 || neighbor_gpu[i] == n+1 || neighbor_gpu[i] == -n+1 )) || new_index<0 || new_index >= n*n){
-        edge_detect = false;
-      }
-
-      
-
-
-      if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
-      {
-        graph[new_index].g = graph[explored_index].g + cost;
-          
-        float h_1 = sqrt(pow((graph[new_index].x-graph[goal_gpu].x),2) + pow((graph[new_index].y-graph[goal_gpu].y),2));
-          // printf("%f", h_1);
-        graph[new_index].h = h_1;
-
-          
-        graph[new_index].f = graph[new_index].h + graph[new_index].g;
-        graph[new_index].parent = explored_index;
-        graph[new_index].frontier = true;
+    if (graph[explored_index].goal){
+      printf("FOUND");
+      printf("Hello from thread %d, I am exploring %d\n", tid, explored_index);
+      // planner::Node* temp_node = graph[explored_index].parent;
+      // while (!temp_node->start){
         
-        new_q[8*tid+i] = new_index;
-      }
-      else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
-      {
-        if (graph[new_index].g > graph[explored_index].g + cost)
-        {
-          graph[new_index].g = graph[explored_index].g + cost;
-          graph[new_index].f = graph[new_index].h + graph[new_index].g;
-          graph[new_index].parent = explored_index;
-        }
-      }
+      //     temp_node->path = true;
+      //     temp_node = temp_node->parent;
+      // }
+      path_found_gpu = true;
     }
 
+    if (!path_found_gpu){
+      for (int i=0; i<8; i++)
+      {   
+        
+        int neighbor1[2];
+        neighbor1[0] = neighbor_gpu[2*i];
+        neighbor1[1] = neighbor_gpu[2*i+1];
+
+        int new_coord[2];
+        new_coord[0] = explored_coord[0] + neighbor1[0];
+        new_coord[1] = explored_coord[1] + neighbor1[1];
+
+
+        int new_index = new_coord[0] + new_coord[1]*n;
+
+        if (new_index<0 || new_index >= n*n) continue;
+
+
+        float cost;
+        
+        if (i<4){
+          cost = 1;
+        }
+        else {
+          cost = sqrt(2.0);
+        }
+
+
+        bool edge_detect = true;
+
+        
+                  
+        // if ((explored_index%n ==0 && neighbor_gpu[i] == -1) || (explored_index%(n-1) ==0 && neighbor_gpu[i] == 1 &&explored_index!=0) || new_index<0 || new_index >= n*n){
+        //   edge_detect = false;
+        // }
+
+        if ((new_coord[0] >= n) || (new_coord[0] < 0)  || (new_coord[1] >= n) || (new_coord[1] <0 )){
+
+          edge_detect = false;
+        }
+
+
+
+        if (graph[new_index].obstacle == false && graph[new_index].frontier == false && graph[new_index].explored == false && edge_detect)
+        {
+          graph[new_index].g = graph[explored_index].g + cost;
+            
+          float h_1 = sqrt(pow((graph[new_index].x-graph[goal_gpu].x),2) + pow((graph[new_index].y-graph[goal_gpu].y),2));
+            // printf("%f", h_1);
+          graph[new_index].h = h_1;
+
+            
+          graph[new_index].f = graph[new_index].h + graph[new_index].g;
+          graph[new_index].parent = explored_index;
+          graph[new_index].frontier = true;
+          
+          new_q[8*tid+i] = new_index;
+        }
+        else if (edge_detect && graph[new_index].obstacle == false && (graph[new_index].frontier == true || graph[new_index].explored == true))
+        {
+          if (graph[new_index].g > graph[explored_index].g + cost)
+          {
+            graph[new_index].g = graph[explored_index].g + cost;
+            graph[new_index].f = graph[new_index].h + graph[new_index].g;
+            graph[new_index].parent = explored_index;
+
+            if (graph[new_index].explored == true) {
+              graph[new_index].explored == false;
+              new_q[8*tid+i] = new_index;
+            }
+          }
+        }
+
+        __syncthreads();
+      }
+
+    }
   }
 
-}
 
+}
 
 
 
@@ -168,8 +194,10 @@ int main(int argc, char** argv)
       int obstacles_index =  (int)xml_obstacles[i][0] +  (int)xml_obstacles[i][1] * n;
       obstacles.push_back( obstacles_index);
   }
-  planner::Node graph[n*n];
-  planner::map_generation(&graph[0], n, start, goal, obstacles);
+  planner::Node* graph = new planner::Node[n*n];
+
+
+  planner::map_generation(graph, n, start, goal, obstacles);
 
   int path1 = goal;
   bool path_found = false;
@@ -196,13 +224,26 @@ int main(int argc, char** argv)
 
   planner::Node *map_gpu;
 
-  int neighbor[8] = {1, -1, n, -n, n+1, n-1, -n+1, -n-1};
+  int neighbors[8][2] = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+
+  int neighbor[16];
+
+  for (int i =0; i< 8; i++){
+      for (int j=0; j<2; j++){
+
+      neighbor[2*i+j] = neighbors[i][j];
+
+
+
+      }
+
+  }
 
   cudaMalloc( (void**)&map_gpu, map_size );
-  cudaMemcpy(map_gpu, &graph, map_size, cudaMemcpyHostToDevice);
+  cudaMemcpy(map_gpu, graph, map_size, cudaMemcpyHostToDevice);
 
   cudaMemcpyToSymbol(path_found_gpu, &path_found,  sizeof(bool));
-  cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  8*sizeof(int));
+  cudaMemcpyToSymbol(neighbor_gpu, &neighbor,  16*sizeof(int));
   cudaMemcpyToSymbol(goal_gpu, &goal,  sizeof(int));
 
 
@@ -224,20 +265,31 @@ int main(int argc, char** argv)
 
 
       //Determine how many thread should be launched
-      int thread_size = min(max_thread_size, q_size);
+      int thread_size_needed = min(max_thread_size, q_size);
+      int block_size, thread_size;
+
+      if (thread_size_needed <=1024){
+        block_size = 1;
+        thread_size = thread_size_needed;
+      }
+      else{
+        block_size = (thread_size_needed/1024) + 1;
+        thread_size = 1024;
+      }
+
 
  
       //Launch the kernel to explore the map
-      explore<<<1,thread_size>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(new_q_lists_gpu.data()));
+      explore<<<block_size,thread_size>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(new_q_lists_gpu.data()), thread_size_needed, n);
       cudaDeviceSynchronize();
       cudaMemcpyFromSymbol(&path_found, path_found_gpu,  sizeof(bool), 0, cudaMemcpyDeviceToHost );
-      cudaMemcpy(&graph, map_gpu,  map_size, cudaMemcpyDeviceToHost );
+      cudaMemcpy(graph, map_gpu,  map_size, cudaMemcpyDeviceToHost );
 
 
       // Remove all element that is not used during the exploration and repeated value
       
       new_q_lists_gpu.erase(thrust::remove_if(new_q_lists_gpu.begin(), new_q_lists_gpu.end(), is_negative()),  new_q_lists_gpu.end() );
-      
+      thrust::sort(new_q_lists_gpu.begin(), new_q_lists_gpu.end());
       new_q_lists_gpu.erase(thrust::unique(new_q_lists_gpu.begin(), new_q_lists_gpu.end()), new_q_lists_gpu.end() );
       
       // Create new q list based on origional and updated q
@@ -250,11 +302,27 @@ int main(int argc, char** argv)
         
         q_lists_gpu.erase(q_lists_gpu.begin(), q_lists_gpu.begin()+max_thread_size );
         q_lists_gpu.insert(q_lists_gpu.end(), new_q_lists_gpu.begin(), new_q_lists_gpu.end() );
+        thrust::sort(q_lists_gpu.begin(), q_lists_gpu.end());
+        q_lists_gpu.erase(thrust::unique(q_lists_gpu.begin(), q_lists_gpu.end()), q_lists_gpu.end() );
+      
         new_q_lists_gpu.clear();
 
         // //sort the q_list based on the f value
         thrust::device_vector<float> f_value(q_lists_gpu.size());
-        get_f<<<1, q_lists_gpu.size()>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
+        
+
+        int f_block_size, f_thread_size;
+        if (q_lists_gpu.size() <=1024){
+            f_block_size = 1;
+            f_thread_size = q_lists_gpu.size();
+          }
+        else{
+            f_block_size = (q_lists_gpu.size()/1024) + 1;
+            f_thread_size = 1024;
+          }
+
+        get_f<<<f_block_size, f_thread_size>>>(thrust::raw_pointer_cast(q_lists_gpu.data()),  map_gpu, thrust::raw_pointer_cast(f_value.data()), q_lists_gpu.size() );
+        cudaDeviceSynchronize();
         thrust::sort_by_key(f_value.begin(), f_value.end(), q_lists_gpu.begin() );
       }
 
@@ -317,7 +385,7 @@ int main(int argc, char** argv)
       //   std::cout<< static_cast<int16_t>(v[k]) << std::endl;
 
       // }
-      ros::Rate loop_rate(5);
+      ros::Rate loop_rate(2);
             
       map.points = v;
 

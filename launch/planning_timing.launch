@@ -11,7 +11,7 @@
 
 <!-- Start RVIZ for visualization -->
 <!-- 在rviz中显示-->
-<node name="rviz" pkg="rviz" type="rviz" args="-d $(find graph_search)/configs/planning_visualization.rviz" required="true" />
+<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find graph_search)/configs/planning_visualization.rviz" required="true" /> -->
 
 
 </launch>

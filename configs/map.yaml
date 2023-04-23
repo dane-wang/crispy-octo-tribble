@@ -1,8 +1,11 @@
 map_size: 50 #[width, height] size of the map
-start_position: [0, 0]   # The x and y location of the start point
-goal_position: [48, 40] #The x and y location of the goal point
-obstacles: [[10,10], [10,15], [12,12]]
+start_position: [10, 5]   # The x and y location of the start point
+goal_position: [47, 45] #The x and y location of the goal point
+obstacles: [[15,15], [16,15], [17,15], [18,15], [19, 15], [20, 15], [21, 15], [22,15], [22,14], [22, 13], [22, 12], [22, 11], [22,10], [22,9], [22, 8], [22, 7]]
 hidden_obstacles: [[15,15], [16,15], [17,15], [18,15], [19, 15], [20, 15], [21, 15], [22,15], [22,14], [22, 13], [22, 12], [22, 11], [22,10], [22,9], [22, 8], [22, 7]]
 #  [[15,15], [16,15], [17,15], [18,15], [19, 15], [20, 15], [21, 15], [22,15], [22,14], [22, 13], [22, 12], [22, 11], [22,10], [22,9], [22, 8], [22, 7]]
-max_thread: 2000 #The maximum thread of GPU can be used for the planning. AKA the maximum number of nodes can be explored each time
+max_thread: 9999999 #The maximum thread of GPU can be used for the planning. AKA the maximum number of nodes can be explored each time
 use_parallel: 1 #Determine if we are using parallel planning or no
+
+test_mode: 0
+test_result_file: /home/dane/catkin_ws/src/text_results/2D/obstacle_free_1900_pal.txt
